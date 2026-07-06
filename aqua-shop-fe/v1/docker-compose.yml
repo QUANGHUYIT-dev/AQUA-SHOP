@@ -1,0 +1,103 @@
+version: "3.8"
+
+services:
+  # 1. Database MySQL
+  mysql-db:
+    container_name: aqua-mysql
+    ports:
+      - "3307:3306"
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: "21042004"
+      MYSQL_DATABASE: "aqua_shop_db_v1"
+      TZ: "Asia/Ho_Chi_Minh"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    networks:
+      - aqua-network
+    healthcheck:
+      test:
+        ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p21042004"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 2. Backend API
+  backend-api:
+    container_name: aqua-backend
+    build:
+      context: ../../aqua-shop-be
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - MYSQL_HOST=mysql-db # Khớp với ${MYSQL_HOST:localhost}
+      - MYSQL_PORT=3306 # Khớp với ${MYSQL_PORT:3306}
+      - MYSQL_USER=root # Khớp với ${MYSQL_USER:root}
+      - MYSQL_PASSWORD=21042004 # Khớp với ${MYSQL_PASSWORD:21042004}
+      - MYSQL_DB=aqua_shop_db_v1 # Khớp với ${MYSQL_DB:aqua_shop_db_v1}
+    depends_on:
+      mysql-db:
+        condition: service_healthy
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - aqua-network
+
+  # 3. Frontend Next.js
+  frontend-apps:
+    container_name: aqua-frontend
+    build:
+      context: .
+      dockerfile: ../Dockerfile
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - API_PROXY_TARGET=http://backend-api:8080
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - aqua-network
+
+  # 4. Nginx Reverse Proxy
+  nginx-proxy:
+    container_name: aqua-nginx
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "8080:80"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend-apps
+      - backend-api
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    networks:
+      - aqua-network
+
+  # 5. Watchtower
+  watchtower:
+    container_name: aqua-watchtower
+    image: containrrr/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_API_VERSION=1.40
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+    networks:
+      - aqua-network
+
+volumes:
+  mysql_data:
+
+networks:
+  aqua-network:
+    driver: bridge

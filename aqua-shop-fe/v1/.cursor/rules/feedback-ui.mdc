@@ -1,0 +1,60 @@
+---
+description: Toast thông báo và hộp thoại xác nhận Yes/No — dùng useFeedback, không dùng alert/confirm
+alwaysApply: true
+---
+
+# Thông báo & xác nhận (Feedback UI)
+
+Provider đã bọc toàn app trong `app/providers.tsx` → `FeedbackProvider`.
+
+## API
+
+```tsx
+import { useFeedback } from "@/hooks/useFeedback";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { SYSTEM_MESSAGES } from "@/constants/systemMessages";
+
+const { toast, confirm } = useFeedback();
+
+// Toast (góc phải trên, tự đóng)
+toast.success(SYSTEM_MESSAGES.SAVE_SUCCESS);
+toast.error(getApiErrorMessage(err));
+toast.info("Đang xử lý...");
+toast.warning("Dữ liệu chưa đầy đủ");
+
+// Hộp Yes/No — trả Promise<boolean>
+const ok = await confirm({
+  title: "Xóa sản phẩm",
+  message: `Xóa "${name}"?`,
+  confirmLabel: "Xóa",
+  cancelLabel: "Hủy",
+  variant: "danger", // hoặc "default"
+});
+if (!ok) return;
+```
+
+## Quy tắc
+
+| Việc cần làm | Cách làm |
+|--------------|----------|
+| Thông báo ngắn sau action | `toast.success` / `toast.error` |
+| Xác nhận trước xóa / hành động nguy hiểm | `await confirm({ variant: "danger", ... })` |
+| Message lỗi API | `toast.error(getApiErrorMessage(err))` — không hardcode |
+| Message chung tái dùng | `SYSTEM_MESSAGES` trong `constants/systemMessages.ts` |
+| Lỗi form inline (validation) | Giữ UI trong form — không bắt buộc toast |
+
+## ❌ Không dùng
+
+- `window.alert`, `window.confirm`, `prompt()`
+
+## File liên quan
+
+| File | Vai trò |
+|------|---------|
+| `hooks/useFeedback.ts` | Hook consumer |
+| `lib/context/FeedbackContext.tsx` | Provider + API |
+| `components/ui/ToastStack.tsx` | Toast UI |
+| `components/ui/ConfirmDialog.tsx` | Yes/No dialog |
+| `types/feedback.ts` | Types |
+
+Component UI đặt trong `components/ui/` — không tạo toast/confirm riêng lẻ trong feature.

@@ -1,0 +1,9 @@
+# Copy file này thành application-local.yaml (file đó không commit — đã có trong .gitignore).
+# Spring tự import optional:classpath:application-local.yaml khi file tồn tại.
+
+app:
+  admin:
+    enabled: true
+    email: admin@aquashop.local
+    password: Admin@1234
+    full-name: Quản trị viên

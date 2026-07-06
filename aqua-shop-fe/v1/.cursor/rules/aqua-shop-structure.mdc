@@ -1,0 +1,164 @@
+---
+description: Cấu trúc source Aqua Shop FE — đọc file này trước khi code tính năng mới
+alwaysApply: true
+---
+
+# Aqua Shop Frontend — Project Map
+
+> **Đọc rule này trước** thay vì quét lại toàn bộ source. Root code: `v1/`. Rule file: `v1/.cursor/rules/aqua-shop-structure.mdc`.
+
+## Tech stack
+
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Axios · Lucide React · js-cookie
+
+UI text: **tiếng Việt**. Import alias: `@/` → `v1/`. Bo góc nhẹ: card/panel `rounded-xl`, nút/input `rounded-lg`, badge tròn `rounded-full`.
+
+## Cấu trúc thư mục
+
+```
+v1/
+├── app/                              # Routes — chỉ routing + layout mỏng
+│   ├── page.tsx                      # /
+│   ├── layout.tsx                    # Root layout
+│   ├── providers.tsx                 # AuthProvider
+│   ├── globals.css
+│   ├── (auth)/login/page.tsx         # /login
+│   ├── profile/page.tsx              # /profile — guard qua useRequireAuth trong client
+│   ├── [slug]/page.tsx               # /ca-canh-thuy-sinh, ...
+│   ├── search/page.tsx               # /search
+│   ├── san-pham/[slug]/page.tsx      # /san-pham/{slug}
+│   └── admin/                        # /admin/* — layout + guard riêng
+│       ├── layout.tsx
+│       ├── page.tsx
+│       ├── products/page.tsx
+│       ├── categories/page.tsx
+│       ├── brands/page.tsx
+│       └── customers/page.tsx
+│
+├── components/
+│   ├── features/{feature}/           # auth, home, category, product, search, profile, admin
+│   ├── layout/                       # TopBar, SiteHeader, Header, CategoryNavBar, Footer, ...
+│   └── ui/                           # ToastStack, ConfirmDialog — dùng qua useFeedback()
+│
+├── constants/
+│   ├── routes.ts                     # ROUTES — không hardcode path
+│   ├── socialLinks.ts
+│   ├── systemMessages.ts
+│   └── priceRanges.ts
+│
+├── hooks/                            # Custom hooks (useXxx) — logic tái sử dụng
+│   ├── useAuth.ts                    # Auth context consumer
+│   ├── useFeedback.ts                # Toast + confirm dialog
+│   ├── useRequireAuth.ts             # Redirect /login nếu chưa đăng nhập
+│   ├── useCurrentProfile.ts          # Load /auth/me
+│   └── useAdminAccess.ts             # Guard admin role
+│
+├── utils/                            # Hàm thuần — format, map label, variant logic
+│   ├── product-utils.ts              # formatPrice, PRODUCT_TYPE_LABELS, ...
+│   ├── product-detail-utils.ts       # Gallery, detail rows, variant label
+│   └── variant-selector-utils.ts     # Chọn variant theo size/volume/color
+│
+├── lib/
+│   ├── api.ts                        # Export chính — shop + admin API (re-export admin-api)
+│   ├── admin-api.ts                  # Impl admin API — import qua @/lib/api, không import trực tiếp
+│   ├── admin-auth.ts                 # isStaffRole, getRoleLabel
+│   ├── axios-client.ts
+│   ├── auth-storage.ts
+│   ├── context/AuthContext.tsx
+│   ├── context/FeedbackContext.tsx   # Toast + confirm — hook: useFeedback()
+│   ├── api-error.ts
+│   ├── category-config.ts
+│   ├── category-mapper.ts
+│   ├── category-page-params.ts
+│   ├── category-images.ts
+│   ├── product-mapper.ts
+│   ├── search-params.ts
+│   └── logger.ts
+│
+└── types/
+    ├── product.ts
+    ├── auth.ts
+    ├── brand.ts
+    └── admin.ts
+```
+
+## Quy ước Next.js routing
+
+| Pattern                        | Ví dụ                                                             | URL                  |
+| ------------------------------ | ----------------------------------------------------------------- | -------------------- |
+| Route group `(name)`           | `(auth)/login`                                                    | `/login`             |
+| Route group protected          | ~~`(protected)/profile`~~ → `profile/page.tsx` + `useRequireAuth` | `/profile`           |
+| Dynamic segment                | `[slug]/page`                                                     | `/ca-canh-thuy-sinh` |
+| Static segment                 | `san-pham/[slug]`                                                 | `/san-pham/ten-sp`   |
+| ❌ KHÔNG dùng dynamic cho auth | `[auth]/login`                                                    | URL sai              |
+
+**Trên Windows:** không rename `[...]` → `(...)` trực tiếp (EPERM). Tạo folder mới, copy file, xóa cũ bằng `Remove-Item -LiteralPath`.
+
+## Backend & env
+
+```
+NEXT_PUBLIC_API_BASE_URL=/api/v1
+API_PROXY_TARGET=http://127.0.0.1:8080
+NEXT_PUBLIC_PARENT_CATEGORY_SLUGS=ca-canh-thuy-sinh,cay-thuy-sinh,thiet-bi-be-ca
+```
+
+Luồng API: component → `@/lib/api.ts` → `axios-client.ts` → `/api/v1/*` → Java backend.
+
+Auth: JWT cookie · auto-refresh 401 · `useAuth()` từ `@/hooks/useAuth`.
+
+**Không dùng mock data.** Không gọi endpoint không tồn tại.
+
+## Parent categories (slug thật)
+
+| Slug                | Tên               |
+| ------------------- | ----------------- |
+| `ca-canh-thuy-sinh` | Cá Cảnh Thủy Sinh |
+| `cay-thuy-sinh`     | Cây Thủy Sinh     |
+| `thiet-bi-be-ca`    | Thiết Bị Bể Cá    |
+
+Homepage: `getChildCategories()` → mỗi child → `filterProducts({ categoryId, status: "ACTIVE" })`.
+
+Nav/Footer: `@/constants/routes` (`ROUTES.CATEGORY_*`).
+
+## Checklist thêm tính năng mới
+
+| Loại                                 | Đặt ở đâu                                                      |
+| ------------------------------------ | -------------------------------------------------------------- |
+| Page công khai                       | `app/`                                                         |
+| Page đăng nhập                       | `app/(auth)/`                                                  |
+| Page user đã login                   | `app/(protected)/`                                             |
+| Admin                                | `app/admin/` + `components/features/admin/`                    |
+| UI theo feature                      | `components/features/{feature}/`                               |
+| Shell chung                          | `components/layout/`                                           |
+| Gọi API                              | impl trong `lib/` · **import từ `@/lib/api.ts`**               |
+| Path, message                        | `constants/`                                                   |
+| Types                                | `types/`                                                       |
+| Context                              | `lib/context/` — chỉ Provider + Context, **không** export hook |
+| Custom hook                          | `hooks/useXxx.ts` — import `@/hooks/useXxx`                    |
+| Hàm thuần (format, label, parser UI) | `utils/` — import `@/utils/...`                                |
+| ❌ Không có `db/`                    | FE không kết nối DB — data qua `@/lib/api.ts` → backend        |
+
+## Patterns code
+
+- Page server component → import client từ `components/features/`.
+- `"use client"` chỉ khi cần hooks/event/state.
+- `ProductCard`: `object-contain` · subtitle = `categoryName` · giá variant `isDefault`.
+- Error UI: `getApiErrorMessage(err)` — không hardcode string lỗi.
+- Toast / confirm: `useFeedback()` — **không** `window.alert` / `window.confirm`. Chi tiết: rule `feedback-ui.mdc`.
+- Auth UI: check `isHydrated` trước render login state.
+- Hook: logic state/effect tái sử dụng → `hooks/`; component chỉ render UI.
+- Admin: guard role ADMIN/STAFF/WAREHOUSE qua `AdminShell` + `isStaffRole()`.
+
+## File tham chiếu nhanh
+
+| Cần hiểu         | Đọc                                                                      |
+| ---------------- | ------------------------------------------------------------------------ |
+| API shop + admin | `lib/api.ts`                                                             |
+| Auth flow        | `hooks/useAuth.ts`, `lib/context/AuthContext.tsx`, `lib/axios-client.ts` |
+| Homepage         | `components/features/home/HomeCategorySections.tsx`                      |
+| Category page    | `components/features/category/CategoryPageClient.tsx`                    |
+| Search           | `components/features/search/SearchPageClient.tsx`                        |
+| Product detail   | `components/features/product/ProductDetailPageClient.tsx`                |
+| Profile          | `components/features/profile/ProfilePageClient.tsx`                      |
+| Admin dashboard  | `components/features/admin/AdminShell.tsx`                               |
+| Types            | `types/product.ts`, `types/auth.ts`, `types/admin.ts`                    |
