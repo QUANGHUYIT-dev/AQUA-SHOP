@@ -15,6 +15,9 @@
 **/application-local.yaml
 !**/application-local.yaml.example
 
+**/application*.yaml
+!**/application*.example
+
 # Docker override local (mật khẩu, port tùy máy)
 docker-compose.override.yml
 docker-compose.local.yml
